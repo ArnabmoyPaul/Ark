@@ -1,0 +1,43 @@
+# MedMNIST+ (224x224) datasets for Ark+ pretraining.
+# <DATA_ROOT> is replaced at run time by --data_root (see main_ark.py).
+# train_list / val_list / test_list hold the split name; the MedMNIST loader reads
+# <data_dir>/<split>_images.npy and <data_dir>/<split>_labels.npy.
+# Official MedMNIST splits are used unchanged (train for training, val for
+# validation/early stopping, test only for reporting).
+
+ChestMNIST:
+  data_dir: <DATA_ROOT>/chestmnist
+  train_list: train
+  val_list: val
+  test_list: test
+  diseases: ['atelectasis', 'cardiomegaly', 'effusion', 'infiltration', 'mass', 'nodule', 'pneumonia', 'pneumothorax', 'consolidation', 'edema', 'emphysema', 'fibrosis', 'pleural', 'hernia']
+  task_type: multi-label classification
+
+DermaMNIST:
+  data_dir: <DATA_ROOT>/dermamnist
+  train_list: train
+  val_list: val
+  test_list: test
+  diseases: ['actinic_keratoses', 'basal_cell_carcinoma', 'benign_keratosis', 'dermatofibroma', 'melanoma', 'melanocytic_nevi', 'vascular_lesions']
+  task_type: multi-class classification
+
+# RetinaMNIST is labelled "ordinal regression" in MedMNIST; the MedMNIST benchmark
+# and evaluator treat it as 5-class classification, so it is multi-class here too.
+RetinaMNIST:
+  data_dir: <DATA_ROOT>/retinamnist
+  train_list: train
+  val_list: val
+  test_list: test
+  diseases: ['grade_0', 'grade_1', 'grade_2', 'grade_3', 'grade_4']
+  task_type: multi-class classification
+
+# Binary, one output like Shenzhen in the original config. MedMNIST label 1 means
+# "normal, benign" and 0 means "malignant"; the label is kept as is so the AUC
+# matches the MedMNIST evaluator (which scores class 1).
+BreastMNIST:
+  data_dir: <DATA_ROOT>/breastmnist
+  train_list: train
+  val_list: val
+  test_list: test
+  diseases: ['normal_or_benign']
+  task_type: binary classification
