@@ -681,6 +681,102 @@ class MedMNIST(Dataset):
     return len(self.indexes)
 
 
+# ---------------------------------------------MedMNIST 3D (PATCH: new)--------------------------------------
+class MedMNIST3D(Dataset):
+  """MedMNIST+ 3D volumes (64x64x64) served to the unchanged 2D Ark+ model.
+
+  The Ark+ architecture, loss, optimiser and augmentation are untouched; only this
+  loader changes. Each volume is reduced to one three-channel image:
+
+    slice_mode = "center3"      three consecutive slices around the depth centre -> R, G, B
+    slice_mode = "orthogonal"   centre slice of the axial, coronal and sagittal planes -> R, G, B
+
+  After that the image goes through exactly the same pipeline as every 2D dataset
+  (resize, RandomResizedCrop / ShiftScaleRotate for the student, resized original for
+  the teacher, ImageNet normalisation).
+  """
+
+  def __init__(self, images_path, file_path, crop_size=224, resize=256, augment=None,
+               task_type="multi-class classification", num_class=11, limit=0, seed=99,
+               slice_mode="center3"):
+    self.images_file = os.path.join(images_path, "{}_images.npy".format(file_path))
+    self.labels_file = os.path.join(images_path, "{}_labels.npy".format(file_path))
+    assert os.path.isfile(self.images_file), "missing {} (run prepare_medmnist.py)".format(self.images_file)
+    self.crop_size = crop_size
+    self.resize = resize
+    self.augment = augment
+    self.train_augment = build_ts_transformations(crop_size)
+    self.task_type = task_type
+    self.num_class = num_class
+    self.slice_mode = slice_mode
+
+    labels = np.load(self.labels_file)
+    self.labels = labels.reshape(labels.shape[0], -1)
+    self.indexes = np.arange(self.labels.shape[0])
+    if limit and limit < len(self.indexes):
+      rng = random.Random(seed)
+      idx = list(self.indexes)
+      rng.shuffle(idx)
+      self.indexes = np.array(sorted(idx[:limit]))
+    self._images = None
+
+  def _label(self, raw):
+    if self.task_type == "multi-class classification":
+      lab = np.zeros(self.num_class)
+      lab[int(raw[0])] = 1
+      return lab
+    if self.task_type == "binary classification":
+      return np.array([float(raw[0])])
+    return raw.astype(np.float64)
+
+  def _to_image(self, vol):
+    """vol: (D, H, W) uint8  ->  (H, W, 3) uint8"""
+    d, h, w = vol.shape
+    if self.slice_mode == "orthogonal":
+      a = vol[d // 2, :, :]
+      c = vol[:, h // 2, :]
+      s = vol[:, :, w // 2]
+      n = max(a.shape + c.shape + s.shape)
+      def pad(x):
+        out = np.zeros((n, n), dtype=vol.dtype)
+        out[:x.shape[0], :x.shape[1]] = x
+        return out
+      return np.stack([pad(a), pad(c), pad(s)], axis=-1)
+    k = d // 2
+    idx = [max(0, k - 1), k, min(d - 1, k + 1)]
+    return np.stack([vol[i] for i in idx], axis=-1)
+
+  def __getitem__(self, index):
+    cv2.setNumThreads(0)
+    if self._images is None:
+      self._images = np.load(self.images_file, mmap_mode="r")
+    j = self.indexes[index]
+    arr = self._to_image(np.asarray(self._images[j]))
+
+    imageData = Image.fromarray(arr).convert('RGB').resize((self.resize, self.resize))
+    imageLabel = torch.FloatTensor(self._label(self.labels[j]))
+    if self.augment != None:
+      student_img, teacher_img = self.augment(imageData), self.augment(imageData)
+    else:
+      teacher_img = np.array(imageData.resize((self.crop_size, self.crop_size))) / 255.
+
+      imageData = (np.array(imageData)).astype('uint8')
+      augmented = self.train_augment(image=imageData)
+      student_img = augmented['image']
+      student_img = np.array(student_img) / 255.
+
+      mean, std = [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]
+      student_img = (student_img - mean) / std
+      teacher_img = (teacher_img - mean) / std
+      student_img = student_img.transpose(2, 0, 1).astype('float32')
+      teacher_img = teacher_img.transpose(2, 0, 1).astype('float32')
+
+    return student_img, teacher_img, imageLabel
+
+  def __len__(self):
+    return len(self.indexes)
+
+
 dict_dataloarder = {
     "ChestXray14": ChestXray14,
     "CheXpert": CheXpert,
@@ -694,4 +790,11 @@ dict_dataloarder = {
     "DermaMNIST": MedMNIST,
     "RetinaMNIST": MedMNIST,
     "BreastMNIST": MedMNIST,
+    # PATCH: MedMNIST+ 3D (64x64x64) datasets
+    "OrganMNIST3D": MedMNIST3D,
+    "FractureMNIST3D": MedMNIST3D,
+    "SynapseMNIST3D": MedMNIST3D,
+    "NoduleMNIST3D": MedMNIST3D,
+    "AdrenalMNIST3D": MedMNIST3D,
+    "VesselMNIST3D": MedMNIST3D,
 }

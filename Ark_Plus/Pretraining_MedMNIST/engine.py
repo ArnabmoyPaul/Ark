@@ -219,7 +219,15 @@ def omni_engine(args, model_path, output_path, dataset_list, datasets_config, da
             best_metric = checkpoint.get('best_metric', best_metric)
             best_epoch = checkpoint.get('best_epoch', best_epoch)
             no_improve = checkpoint.get('no_improve', 0)
-            stopped_early = checkpoint.get('stopped_early', False)
+            # Re-check the stop with the CURRENT settings, so a resume with
+            # --early_stop_patience 0 (off) or a later --early_stop_min_epochs
+            # continues training instead of skipping straight to the final test.
+            stopped_early = bool(checkpoint.get('stopped_early', False)
+                                 and args.early_stop_patience > 0
+                                 and no_improve >= args.early_stop_patience
+                                 and start_epoch >= args.early_stop_min_epochs)
+            if checkpoint.get('stopped_early', False) and not stopped_early:
+                print("=> checkpoint was marked 'stopped early'; current settings allow training to continue.")
             if os.path.isfile(history_file):
                 history = [h for h in json.load(open(history_file)) if h["epoch"] < start_epoch]
             if os.path.isfile(periodic_test_file):

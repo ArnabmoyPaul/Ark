@@ -123,6 +123,7 @@ def get_args_parser():
     parser.add_option("--limit_eval", dest="limit_eval", help="smoke test: use only N random val/test images per dataset (0 = all)", default=0, type="int")
     parser.add_option("--max_train_steps", dest="max_train_steps", help="smoke test: max micro-batches per dataset per epoch (0 = all)", default=0, type="int")
     parser.add_option("--max_eval_steps", dest="max_eval_steps", help="smoke test: max batches per val/test pass (0 = all)", default=0, type="int")
+    parser.add_option("--slice_mode", dest="slice_mode", help="3D volumes to one RGB image: center3 | orthogonal", default="center3", type="string")
     parser.add_option("--seed", dest="seed", help="random seed", default=0, type="int")
 
     (options, args) = parser.parse_args()
@@ -150,8 +151,10 @@ def main(args):
     def build(dataset, split_key, augment, limit):
         cfg = datasets_config[dataset]
         kw = dict(images_path=cfg['data_dir'], file_path=cfg[split_key], crop_size=args.crop_size, resize=args.resize, augment=augment)
-        if dict_dataloarder[dataset] is MedMNIST:
+        if dict_dataloarder[dataset] in (MedMNIST, MedMNIST3D):
             kw.update(task_type=cfg['task_type'], num_class=len(cfg['diseases']), limit=limit)
+        if dict_dataloarder[dataset] is MedMNIST3D:
+            kw.update(slice_mode=args.slice_mode)
         return dict_dataloarder[dataset](**kw)
 
     dataset_train_list = []

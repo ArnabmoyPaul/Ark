@@ -41,3 +41,57 @@ BreastMNIST:
   test_list: test
   diseases: ['normal_or_benign']
   task_type: binary classification
+
+# ---------------------------------------------------------------------------
+# MedMNIST+ 3D (64x64x64). The Ark+ model is unchanged: each volume is reduced
+# to one three-channel image in the loader (see MedMNIST3D in dataloader.py).
+# ---------------------------------------------------------------------------
+
+OrganMNIST3D:
+  data_dir: <DATA_ROOT>/organmnist3d
+  train_list: train
+  val_list: val
+  test_list: test
+  diseases: ['liver', 'kidney_right', 'kidney_left', 'femur_right', 'femur_left', 'bladder', 'heart', 'lung_right', 'lung_left', 'spleen', 'pancreas']
+  task_type: multi-class classification
+
+FractureMNIST3D:
+  data_dir: <DATA_ROOT>/fracturemnist3d
+  train_list: train
+  val_list: val
+  test_list: test
+  diseases: ['buckle_rib_fracture', 'nondisplaced_rib_fracture', 'displaced_rib_fracture']
+  task_type: multi-class classification
+
+# MedMNIST label 1 is "excitatory synapse"; kept as is so AUC matches the evaluator.
+SynapseMNIST3D:
+  data_dir: <DATA_ROOT>/synapsemnist3d
+  train_list: train
+  val_list: val
+  test_list: test
+  diseases: ['excitatory_synapse']
+  task_type: binary classification
+
+NoduleMNIST3D:
+  data_dir: <DATA_ROOT>/nodulemnist3d
+  train_list: train
+  val_list: val
+  test_list: test
+  diseases: ['malignant']
+  task_type: binary classification
+
+AdrenalMNIST3D:
+  data_dir: <DATA_ROOT>/adrenalmnist3d
+  train_list: train
+  val_list: val
+  test_list: test
+  diseases: ['adrenal_mass']
+  task_type: binary classification
+
+VesselMNIST3D:
+  data_dir: <DATA_ROOT>/vesselmnist3d
+  train_list: train
+  val_list: val
+  test_list: test
+  diseases: ['aneurysm']
+  task_type: binary classification

@@ -34,6 +34,7 @@ Every changed line in the code is marked `PATCH`.
 | # | Change | Why | Effect on results |
 |---|---|---|---|
 | 1 | New `MedMNIST` dataset class and `datasets_config.yaml` entries | the original only ships chest X-ray loaders | none; image pipeline is copied line by line from `ChestXray14` |
+| 1b | New `MedMNIST3D` dataset class (`--slice_mode center3` by default) | Ark+ is a 2D model; MedMNIST 3D ships volumes | the model, loss, optimiser, augmentation and test protocol are untouched. Each 64x64x64 volume is reduced in the loader to one three-channel image: three consecutive slices around the depth centre as R, G, B (`orthogonal` uses the axial, coronal and sagittal centre slices instead). This is a data choice, not an architecture change, and it must be stated when reporting 3D results |
 | 2 | Gradient accumulation (`--accum_steps`) with size-weighted micro-batch losses | batch 200 does not fit in 8 GB or 16 GB | none: Swin has no BatchNorm, so K micro-batches equal one batch of K x B. Verified by `tests/test_accumulation.py` (difference below 1e-7) |
 | 3 | Mixed precision (`--amp True`) | memory and speed on RTX 4060 / T4 | tiny floating point differences; can be turned off |
 | 4 | BN-EMA: teacher EMA also averages BatchNorm buffers | requested by Prof. Liang | none for Swin-Base (0 BatchNorm buffers, printed at start). Active if a BatchNorm backbone is used |

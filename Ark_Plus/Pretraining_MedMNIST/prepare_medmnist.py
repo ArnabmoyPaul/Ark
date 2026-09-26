@@ -17,6 +17,13 @@ import hashlib
 import numpy as np
 
 NAMES = ["chestmnist", "dermamnist", "retinamnist", "breastmnist"]
+NAMES_3D = ["organmnist3d", "fracturemnist3d", "synapsemnist3d",
+            "nodulemnist3d", "adrenalmnist3d", "vesselmnist3d"]
+
+
+def default_size(name):
+    """2D MedMNIST+ ships at 224; the 3D sets only go up to 64."""
+    return 64 if name.endswith("3d") else 224
 
 
 def md5(path, chunk=1 << 22):
@@ -77,9 +84,10 @@ if __name__ == "__main__":
     ap.add_argument("--data_root", default="./data")
     ap.add_argument("--npz_dir", default="./data/npz")
     ap.add_argument("--datasets", nargs="+", default=NAMES)
-    ap.add_argument("--size", type=int, default=224)
+    ap.add_argument("--size", type=int, default=0, help="0 = 224 for 2D sets, 64 for 3D sets")
     ap.add_argument("--no_md5", action="store_true")
     a = ap.parse_args()
     for n in a.datasets:
-        convert(n.lower(), a.data_root, a.npz_dir, a.size, check_md5=not a.no_md5)
+        n = n.lower()
+        convert(n, a.data_root, a.npz_dir, a.size or default_size(n), check_md5=not a.no_md5)
     print("done")

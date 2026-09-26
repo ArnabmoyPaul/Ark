@@ -14,10 +14,15 @@ import argparse
 import torch
 from models import build_omni_model
 
-# Official MedMNIST split sizes
-TRAIN = {"ChestMNIST": 78468, "DermaMNIST": 7007, "RetinaMNIST": 1080, "BreastMNIST": 546}
-VAL = {"ChestMNIST": 11219, "DermaMNIST": 1003, "RetinaMNIST": 120, "BreastMNIST": 78}
-TEST = {"ChestMNIST": 22433, "DermaMNIST": 2005, "RetinaMNIST": 400, "BreastMNIST": 156}
+# Official MedMNIST split sizes (train, val, test)
+SPLITS = {
+    "ChestMNIST": (78468, 11219, 22433), "DermaMNIST": (7007, 1003, 2005),
+    "RetinaMNIST": (1080, 120, 400), "BreastMNIST": (546, 78, 156),
+    "OrganMNIST3D": (971, 161, 610), "FractureMNIST3D": (1027, 103, 240),
+    "SynapseMNIST3D": (1230, 177, 352), "NoduleMNIST3D": (1158, 165, 310),
+    "AdrenalMNIST3D": (1188, 98, 298), "VesselMNIST3D": (1335, 192, 382),
+}
+DEFAULT_SETS = ["ChestMNIST", "DermaMNIST", "RetinaMNIST", "BreastMNIST"]
 
 
 def divisors_desc(n, cap):
@@ -45,6 +50,7 @@ def main():
     ap.add_argument("--epochs", type=int, default=50)
     ap.add_argument("--test_epoch", type=int, default=10)
     ap.add_argument("--safety", type=float, default=0.85, help="use at most this share of the largest batch that fits")
+    ap.add_argument("--datasets", nargs="+", default=DEFAULT_SETS, help="datasets the run will use (for the time estimate)")
     a = ap.parse_args()
     amp = a.amp.lower() in ("1", "true", "yes", "t")
     assert torch.cuda.is_available(), "no CUDA GPU visible"
@@ -53,9 +59,13 @@ def main():
     mem = [torch.cuda.get_device_properties(i).total_memory / 2**30 for i in range(n_gpu)]
     print("GPUs:", ", ".join("{} ({:.1f} GB)".format(n, m) for n, m in zip(names, mem)))
 
+    n_train = sum(SPLITS[d][0] for d in a.datasets)
+    n_val = sum(SPLITS[d][1] for d in a.datasets)
+    n_test = sum(SPLITS[d][2] for d in a.datasets)
+    heads = [max(1, 2)] * len(a.datasets)
     args = types.SimpleNamespace(model_name="swin_base", projector_features=1376, use_mlp=False, pretrained_weights=None)
-    model = build_omni_model(args, [14, 7, 5, 1]).cuda()
-    teacher = build_omni_model(args, [14, 7, 5, 1]).cuda()
+    model = build_omni_model(args, heads).cuda()
+    teacher = build_omni_model(args, heads).cuda()
     for p in teacher.parameters():
         p.requires_grad = False
     if n_gpu > 1:
@@ -108,13 +118,14 @@ def main():
     eval_ips = 5 * xe.shape[0] / (time.time() - t0)
 
     # Data loading/augmentation is not included, so real time is usually 10-30% higher.
-    train_sec = sum(TRAIN.values()) / train_ips
-    val_sec = sum(VAL.values()) / eval_ips
-    test_sec = 2 * 10 * sum(TEST.values()) / eval_ips  # student+teacher, TenCrop
+    train_sec = n_train / train_ips
+    val_sec = n_val / eval_ips
+    test_sec = 2 * 10 * n_test / eval_ips  # student+teacher, TenCrop
     n_tests = len(range(0, a.epochs, a.test_epoch)) + 1 if a.test_epoch > 0 else 1
     epoch_h = (train_sec + val_sec) / 3600
     total_h = a.epochs * epoch_h + n_tests * test_sec / 3600
     out = {
+        "datasets": a.datasets, "train_images_per_epoch": n_train,
         "gpus": names, "amp": amp, "largest_fit": fits, "micro_batch": b, "accum_steps": k,
         "effective_batch": b * k, "peak_mem_gb": round(peak, 2),
         "train_img_per_s": round(train_ips, 1), "eval_img_per_s": round(eval_ips, 1),

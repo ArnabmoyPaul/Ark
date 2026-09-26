@@ -25,7 +25,9 @@ BASE_IND = "#1baf7a"   # individual, same Ark+ pipeline   slot 3
 LABELS = {"P1": "P1 published (individual)", "P2": "P2 your runs (individual)",
           "IND": "Same pipeline, individual"}
 
-DATASET_ORDER = ["ChestMNIST", "DermaMNIST", "RetinaMNIST", "BreastMNIST"]
+DATASET_ORDER = ["ChestMNIST", "DermaMNIST", "RetinaMNIST", "BreastMNIST",
+                 "OrganMNIST3D", "FractureMNIST3D", "SynapseMNIST3D",
+                 "NoduleMNIST3D", "AdrenalMNIST3D", "VesselMNIST3D"]
 
 
 def _style():
@@ -121,7 +123,7 @@ def plot_auc(final, baselines=None, out=None):
     ax.set_ylim(-0.6, len(ds) - 0.4)
     ax.grid(axis="y", visible=False)
     ax.set_xlabel("Test AUC (mean over classes)")
-    ax.set_title("Ark+ on 4 MedMNIST datasets: test AUC", loc="left")
+    ax.set_title("Ark+ joint training: test AUC", loc="left")
     ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.2 if len(ds) > 2 else -0.35), ncol=2, fontsize=9.5)
     fig.tight_layout()
     if out:
